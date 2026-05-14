@@ -19,16 +19,16 @@ Every project goes through this process. A todo list, a single-function utility,
 
 ## Checklist
 
-You MUST create a task for each of these items and complete them in order:
+Follow these items in order (track them in the bead if useful):
 
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+3. **Conduct the grill-me interview** — run the user's grill-me process (decision-tree interview via AskUserQuestion, one question at a time, each with a recommended answer, resolving dependencies one at a time), recording the decision tree into the bead's `design` field as it goes
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+6. **Record the design in the bead** — decision tree and the *why* behind each choice into the bead's `design` field; scope into `description`
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
+8. **Confirm before planning** — ask the user "design recorded in bead `<id>` — anything to change before planning?"
 9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
@@ -38,28 +38,28 @@ digraph brainstorming {
     "Explore project context" [shape=box];
     "Visual questions ahead?" [shape=diamond];
     "Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "Ask clarifying questions" [shape=box];
+    "Conduct grill-me interview" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
-    "Write design doc" [shape=box];
+    "Record design in bead" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
-    "User reviews spec?" [shape=diamond];
+    "Confirm before planning?" [shape=diamond];
     "Invoke writing-plans skill" [shape=doublecircle];
 
     "Explore project context" -> "Visual questions ahead?";
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
-    "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Visual questions ahead?" -> "Conduct grill-me interview" [label="no"];
+    "Offer Visual Companion\n(own message, no other content)" -> "Conduct grill-me interview";
+    "Conduct grill-me interview" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+    "User approves design?" -> "Record design in bead" [label="yes"];
+    "Record design in bead" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "Confirm before planning?";
+    "Confirm before planning?" -> "Record design in bead" [label="changes requested"];
+    "Confirm before planning?" -> "Invoke writing-plans skill" [label="confirmed"];
 }
 ```
 
@@ -71,10 +71,9 @@ digraph brainstorming {
 
 - Check out the current project state first (files, docs, recent commits)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
-- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- If the project is too large for a single design, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own design → plan → implementation cycle.
+- For appropriately-scoped projects, refine the idea by conducting the user's grill-me interview: a decision-tree interview via the AskUserQuestion tool, one question at a time, each with a recommended answer, resolving dependencies between decisions one at a time
+- Record the decision tree into the bead's `design` field as the interview progresses
 - Focus on understanding: purpose, constraints, success criteria
 
 **Exploring approaches:**
@@ -106,15 +105,15 @@ digraph brainstorming {
 
 ## After the Design
 
-**Documentation:**
+**Recording the design:**
 
-- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-  - (User preferences for spec location override this default)
+- Record the validated design into the bead that was created when grilling started — no separate spec markdown file
+  - The decision tree and the *why* behind each choice go in the bead's `design` field
+  - Scope goes in the bead's `description` field
 - Use elements-of-style:writing-clearly-and-concisely skill if available
-- Commit the design document to git
 
-**Spec Self-Review:**
-After writing the spec document, look at it with fresh eyes:
+**Design Self-Review:**
+After recording the design in the bead, look at it with fresh eyes:
 
 1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
@@ -123,12 +122,12 @@ After writing the spec document, look at it with fresh eyes:
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
-**User Review Gate:**
-After the spec review loop passes, ask the user to review the written spec before proceeding:
+**Confirm before planning:**
+The grilling already walked and approved every decision, so this is a lightweight confirmation, not a formal review gate. After recording the design, ask:
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+> "Design recorded in bead `<id>` — anything to change before planning?"
 
-Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+Wait for the user's response. If they request changes, make them in the bead and re-run the self-review. Only proceed once the user confirms.
 
 **Implementation:**
 
@@ -137,8 +136,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 ## Key Principles
 
-- **One question at a time** - Don't overwhelm with multiple questions
-- **Multiple choice preferred** - Easier to answer than open-ended when possible
+- **Grill, don't guess** - Refine the idea through the grill-me interview, not ad-hoc questioning
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design, get approval before moving on

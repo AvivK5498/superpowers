@@ -25,8 +25,28 @@ Write the test first. Watch it fail. Write minimal code to pass.
 - Throwaway prototypes
 - Generated code
 - Configuration files
+- External-resource tests — see [External-Resource Tests](#external-resource-tests)
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
+
+## External-Resource Tests
+
+TDD is still the default. This carve-out covers **only** tests that can't run without an external resource — everything else follows the Iron Law.
+
+**Trigger — a test would require:**
+- GPU hardware
+- A paid or rate-limited API
+- Real credentials that cost money
+- Human visual or subjective confirmation
+- Infrastructure that can't be faked without testing the fake
+
+**Don't decide alone.** Don't silently skip it. Don't silently build it. **Flag the test and bring it to your human partner before building it.** They decide whether that test is worth creating.
+
+**If approved:** build the external-resource test as specified.
+
+**If declined:** substitute a **mocked test**. Mock the boundary — the GPU, API, renderer, external service — **not the logic under test**. The real logic must still be genuinely exercised; the mock only stands in for the boundary.
+
+Watch for the "testing the mock instead of real behavior" anti-pattern — see @testing-anti-patterns.md. A mock that swallows the logic proves nothing.
 
 ## The Iron Law
 

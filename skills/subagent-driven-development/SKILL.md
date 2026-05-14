@@ -11,6 +11,8 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 
 **Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
 
+**Parallel by default:** The plan carries a dependency DAG (see superpowers:writing-plans). Independent task-groups — those sharing no dependency — are dispatched **in parallel**, each implementer subagent working in **its own git worktree** and merging back on completion. Sequential execution applies only where a real dependency exists between tasks. Fan out wherever the DAG allows it; don't serialize work that has no reason to be serial.
+
 **Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
 ## When to Use
@@ -18,59 +20,61 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 ```dot
 digraph when_to_use {
     "Have implementation plan?" [shape=diamond];
-    "Tasks mostly independent?" [shape=diamond];
-    "Stay in this session?" [shape=diamond];
+    "Tasks have a dependency DAG?" [shape=diamond];
     "subagent-driven-development" [shape=box];
-    "executing-plans" [shape=box];
     "Manual execution or brainstorm first" [shape=box];
 
-    "Have implementation plan?" -> "Tasks mostly independent?" [label="yes"];
+    "Have implementation plan?" -> "Tasks have a dependency DAG?" [label="yes"];
     "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
-    "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
-    "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
-    "Stay in this session?" -> "subagent-driven-development" [label="yes"];
-    "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
+    "Tasks have a dependency DAG?" -> "subagent-driven-development" [label="yes - independent groups fan out, dependent tasks sequence"];
+    "Tasks have a dependency DAG?" -> "Manual execution or brainstorm first" [label="no - one tightly-coupled blob"];
 }
 ```
 
-**vs. Executing Plans (parallel session):**
+**What this skill gives you:**
 - Same session (no context switch)
 - Fresh subagent per task (no context pollution)
 - Two-stage review after each task: spec compliance first, then code quality
+- Parallel fan-out of independent task-groups; sequencing only where the DAG demands it
 - Faster iteration (no human-in-loop between tasks)
 
 ## The Process
+
+The controller reads the task structure from the **bead** (its task list, or sub-beads for large work — see "Reading the Plan" below), then drives the loop: find every task whose dependencies are met, dispatch those in parallel, review each, mark done, repeat.
 
 ```dot
 digraph process {
     rankdir=TB;
 
     subgraph cluster_per_task {
-        label="Per Task";
+        label="Per Task (one per ready task, dispatched in parallel — each in its own worktree)";
         "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
-        "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
+        "Implementer subagent implements, tests, commits, self-reviews in its worktree" [shape=box];
         "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [shape=box];
         "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
         "Implementer subagent fixes spec gaps" [shape=box];
         "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
         "Code quality reviewer subagent approves?" [shape=diamond];
         "Implementer subagent fixes quality issues" [shape=box];
-        "Mark task complete in TodoWrite" [shape=box];
+        "Merge worktree back, close task in bead" [shape=box];
     }
 
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
-    "More tasks remain?" [shape=diamond];
+    "Read task structure from bead, note context" [shape=box];
+    "Find tasks with all dependencies met (parallel set)" [shape=box];
+    "Any tasks ready?" [shape=diamond];
     "Dispatch final code reviewer subagent for entire implementation" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
+    "Read task structure from bead, note context" -> "Find tasks with all dependencies met (parallel set)";
+    "Find tasks with all dependencies met (parallel set)" -> "Any tasks ready?";
+    "Any tasks ready?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes - one per ready task, in parallel"];
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
     "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="no"];
-    "Implementer subagent implements, tests, commits, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
+    "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews in its worktree" [label="no"];
+    "Implementer subagent implements, tests, commits, self-reviews in its worktree" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
     "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
     "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
     "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
@@ -78,13 +82,22 @@ digraph process {
     "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
     "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
     "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Mark task complete in TodoWrite" [label="yes"];
-    "Mark task complete in TodoWrite" -> "More tasks remain?";
-    "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
-    "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
+    "Code quality reviewer subagent approves?" -> "Merge worktree back, close task in bead" [label="yes"];
+    "Merge worktree back, close task in bead" -> "Find tasks with all dependencies met (parallel set)" [label="newly-unblocked tasks"];
+    "Any tasks ready?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no - all tasks closed"];
     "Dispatch final code reviewer subagent for entire implementation" -> "Use superpowers:finishing-a-development-branch";
 }
 ```
+
+Each task in the parallel set runs the full per-task loop independently. The controller waits for every dispatched task to close, then recomputes the ready set — closing a task may unblock dependents. When the ready set is empty and all tasks are closed, proceed to final review.
+
+## Reading the Plan
+
+The task structure comes from the **bead**, not a plan file the subagent reads.
+
+**Small/medium work:** the plan's task list lives in the parent bead. The controller works through that list and marks each task done in the bead as it closes.
+
+**Large work:** each task is its own **sub-bead**, with `bd dep add` edges encoding the dependency DAG. `bd ready` surfaces exactly which sub-beads have no unmet dependency — that is the parallel set the controller dispatches now. As tasks close, `bd ready` surfaces the newly-unblocked ones. For large work there may also be a separate plan file (per the superpowers:writing-plans hybrid model); use it as the source of heavy per-task code detail to hand the implementer, but the task structure and dependency edges come from beads.
 
 ## Model Selection
 
@@ -119,6 +132,10 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 
+## External-Resource Tasks
+
+When a task's test would require an external resource — GPU hardware, a paid or rate-limited API, real credentials with a cost, human visual/subjective confirmation, or any un-fakeable infrastructure — the implementer FLAGS it to the controller rather than building blind. The controller brings it to the human partner to decide before the task is built. On decline, a mocked test is substituted: **mock the boundary, not the logic under test.**
+
 ## Prompt Templates
 
 - `./implementer-prompt.md` - Dispatch implementer subagent
@@ -130,45 +147,39 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 ```
 You: I'm using Subagent-Driven Development to execute this plan.
 
-[Read plan file once: docs/superpowers/plans/feature-plan.md]
-[Extract all 5 tasks with full text and context]
-[Create TodoWrite with all tasks]
+[Large work: task structure is sub-beads under parent bead bd-42]
+[bd ready → bd-43 (Hook installation script), bd-44 (Config schema) have no unmet deps]
+[bd-45 (Recovery modes) depends on bd-43; not ready yet]
 
-Task 1: Hook installation script
+[Dispatch bd-43 and bd-44 in parallel — each implementer in its own worktree]
+[Per-task loop runs independently for each]
 
-[Get Task 1 text and context (already extracted)]
-[Dispatch implementation subagent with full task text + context]
-
-Implementer: "Before I begin - should the hook be installed at user or system level?"
-
+bd-43 Implementer: "Before I begin - should the hook be installed at user or system level?"
 You: "User level (~/.config/superpowers/hooks/)"
-
-Implementer: "Got it. Implementing now..."
-[Later] Implementer:
+bd-43 Implementer: "Got it. Implementing now..."
+[Later] bd-43 Implementer:
   - Implemented install-hook command
   - Added tests, 5/5 passing
   - Self-review: Found I missed --force flag, added it
-  - Committed
+  - Committed in worktree
 
-[Dispatch spec compliance reviewer]
+[Dispatch spec compliance reviewer for bd-43]
 Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
-
 [Get git SHAs, dispatch code quality reviewer]
 Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
+[Merge bd-43 worktree back, bd close bd-43]
 
-[Mark Task 1 complete]
+[bd-44 finishes its loop similarly, merge back, bd close bd-44]
 
-Task 2: Recovery modes
+[bd ready → bd-45 (Recovery modes) now unblocked]
+[Dispatch bd-45 implementer in its own worktree]
 
-[Get Task 2 text and context (already extracted)]
-[Dispatch implementation subagent with full task text + context]
-
-Implementer: [No questions, proceeds]
-Implementer:
+bd-45 Implementer: [No questions, proceeds]
+bd-45 Implementer:
   - Added verify/repair modes
   - 8/8 tests passing
   - Self-review: All good
-  - Committed
+  - Committed in worktree
 
 [Dispatch spec compliance reviewer]
 Spec reviewer: ❌ Issues:
@@ -190,11 +201,11 @@ Implementer: Extracted PROGRESS_INTERVAL constant
 [Code reviewer reviews again]
 Code reviewer: ✅ Approved
 
-[Mark Task 2 complete]
+[Merge bd-45 worktree back, bd close bd-45]
 
 ...
 
-[After all tasks]
+[After all sub-beads closed]
 [Dispatch final code-reviewer]
 Final reviewer: All requirements met, ready to merge
 
@@ -206,19 +217,15 @@ Done!
 **vs. Manual execution:**
 - Subagents follow TDD naturally
 - Fresh context per task (no confusion)
-- Parallel-safe (subagents don't interfere)
+- Independent tasks run in parallel, each in its own worktree (no interference)
 - Subagent can ask questions (before AND during work)
-
-**vs. Executing Plans:**
-- Same session (no handoff)
-- Continuous progress (no waiting)
-- Review checkpoints automatic
 
 **Efficiency gains:**
 - No file reading overhead (controller provides full text)
 - Controller curates exactly what context is needed
 - Subagent gets complete information upfront
 - Questions surfaced before work begins (not after)
+- `bd ready` drives the parallel fan-out — no manual dependency bookkeeping
 
 **Quality gates:**
 - Self-review catches issues before handoff
@@ -239,15 +246,17 @@ Done!
 - Start implementation on main/master branch without explicit user consent
 - Skip reviews (spec compliance OR code quality)
 - Proceed with unfixed issues
-- Dispatch multiple implementation subagents in parallel (conflicts)
-- Make subagent read plan file (provide full text instead)
+- Serialize tasks that have no dependency between them (fan out the DAG's independent groups)
+- Dispatch parallel implementers into a shared workspace — each parallel implementer gets its own git worktree, merges back on completion
+- Make subagent read the plan/bead (provide full task text instead)
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
+- Build an external-resource task without flagging it (implementer flags, controller asks the human, mock the boundary on decline)
 - Accept "close enough" on spec compliance (spec reviewer found issues = not done)
 - Skip review loops (reviewer found issues = implementer fixes = review again)
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
-- Move to next task while either review has open issues
+- Close a task in the bead while either review has open issues
 
 **If subagent asks questions:**
 - Answer clearly and completely
@@ -267,13 +276,10 @@ Done!
 ## Integration
 
 **Required workflow skills:**
-- **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
-- **superpowers:writing-plans** - Creates the plan this skill executes
+- **superpowers:using-git-worktrees** - Each parallel implementer works in its own worktree
+- **superpowers:writing-plans** - Creates the plan (and dependency DAG) this skill executes
 - **superpowers:requesting-code-review** - Code review template for reviewer subagents
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks
 
 **Subagents should use:**
 - **superpowers:test-driven-development** - Subagents follow TDD for each task
-
-**Alternative workflow:**
-- **superpowers:executing-plans** - Use for parallel session instead of same-session execution
