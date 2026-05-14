@@ -35,6 +35,13 @@ Cannot proceed with merge/PR until tests pass.
 
 Stop. Don't proceed to Step 2.
 
+**If the project has no test suite at all:** Don't fabricate a pass or claim tests ran. State it plainly:
+```
+This project has no test suite. Skipping test verification — nothing to run.
+```
+
+Then continue to Step 2.
+
 **If tests pass:** Continue to Step 2.
 
 ### Step 2: Detect Environment

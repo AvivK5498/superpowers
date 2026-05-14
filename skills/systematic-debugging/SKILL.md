@@ -45,7 +45,26 @@ Use for ANY technical issue:
 
 ## The Four Phases
 
-You MUST complete each phase before proceeding to the next.
+You MUST complete each phase before proceeding to the next. When the work under investigation is tracked in beads, Phase 0 comes first.
+
+### Phase 0: Check the Bead
+
+**WHEN the work under investigation is tracked in beads:**
+
+Before investigating what the code *actually* does, learn what it was *intended* to do.
+
+1. **`bd show` the relevant bead**
+   - Read the audit trail — what was done and when
+   - Read the decision tree — what alternatives were considered and why this path was chosen
+   - Read the design rationale — the *why* behind the implementation
+   - Follow the `discovered-from` chain — what work spawned this, what context it inherited
+
+2. **Form an intent baseline**
+   - What was this supposed to do?
+   - What constraints and assumptions were recorded?
+   - Does the bug contradict a recorded decision, or expose an unrecorded gap?
+
+**Then proceed to Phase 1.** If the work isn't tracked in beads, skip straight to Phase 1.
 
 ### Phase 1: Root Cause Investigation
 
@@ -178,6 +197,8 @@ You MUST complete each phase before proceeding to the next.
    - MUST have before fixing
    - Use the `superpowers:test-driven-development` skill for writing proper failing tests
 
+   **Exception — external-resource bugs:** If reproducing the bug in a test would require an external resource — GPU hardware, a paid or rate-limited API, real credentials that cost money, human visual/subjective confirmation, or infra that can't be faked without testing the fake — do NOT silently skip the test and do NOT silently build expensive infra. Flag it and bring it to your human partner first. On decline, substitute a mocked reproduction: mock the boundary (the external resource), not the logic under test. For all ordinary bugs, the failing-test-first requirement stays exactly as written above.
+
 2. **Implement Single Fix**
    - Address the root cause identified
    - ONE change at a time
@@ -259,6 +280,7 @@ If you catch yourself thinking:
 
 | Phase | Key Activities | Success Criteria |
 |-------|---------------|------------------|
+| **0. Check the Bead** (if tracked) | `bd show` — audit trail, decision tree, design, `discovered-from` | Understand INTENDED behavior |
 | **1. Root Cause** | Read errors, reproduce, check changes, gather evidence | Understand WHAT and WHY |
 | **2. Pattern** | Find working examples, compare | Identify differences |
 | **3. Hypothesis** | Form theory, test minimally | Confirmed or new hypothesis |
