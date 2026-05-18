@@ -58,6 +58,8 @@ digraph process {
         "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
         "Code quality reviewer subagent approves?" [shape=diamond];
         "Implementer subagent fixes quality issues" [shape=box];
+        "No-duplicate-files check passes?" [shape=diamond];
+        "Implementer subagent fixes duplicates (edit in place, delete dup)" [shape=box];
         "Merge worktree back, close task in bead" [shape=box];
     }
 
@@ -82,7 +84,10 @@ digraph process {
     "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
     "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
     "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Merge worktree back, close task in bead" [label="yes"];
+    "Code quality reviewer subagent approves?" -> "No-duplicate-files check passes?" [label="yes"];
+    "No-duplicate-files check passes?" -> "Implementer subagent fixes duplicates (edit in place, delete dup)" [label="no"];
+    "Implementer subagent fixes duplicates (edit in place, delete dup)" -> "No-duplicate-files check passes?" [label="re-check"];
+    "No-duplicate-files check passes?" -> "Merge worktree back, close task in bead" [label="yes"];
     "Merge worktree back, close task in bead" -> "Find tasks with all dependencies met (parallel set)" [label="newly-unblocked tasks"];
     "Any tasks ready?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no - all tasks closed"];
     "Dispatch final code reviewer subagent for entire implementation" -> "Use superpowers:finishing-a-development-branch";
@@ -135,6 +140,19 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 ## External-Resource Tasks
 
 When a task's test would require an external resource — GPU hardware, a paid or rate-limited API, real credentials with a cost, human visual/subjective confirmation, or any un-fakeable infrastructure — the implementer FLAGS it to the controller rather than building blind. The controller brings it to the human partner to decide before the task is built. On decline, a mocked test is substituted: **mock the boundary, not the logic under test.**
+
+## No-Duplicate-Files Check
+
+After code quality review passes and before closing the task in the bead, the controller runs a deterministic post-write check over the task's diff. For each **new** file the implementer created, look in the same directory for an existing file whose basename matches the new file's basename minus one of these suffix patterns:
+
+- `_v[0-9]+` — e.g. `foo_v2.py` next to `foo.py`
+- `_new` — e.g. `foo_new.ts` next to `foo.ts`
+- `_modified` — e.g. `foo_modified.go` next to `foo.go`
+- `_copy` — e.g. `foo_copy.js` next to `foo.js`
+- `_old` — e.g. `foo_old.py` next to `foo.py`
+- ` 2` (trailing space-2) — e.g. `foo 2.tsx` next to `foo.tsx`
+
+If any pair exists, the task is **not** complete: re-dispatch the implementer to either (a) edit the existing file in place and delete the duplicate, or (b) justify why both files must coexist (rare — requires a real reason). The `foo_v2.py` pattern is one of the clearest signals the implementer never actually read and edited the existing file; a 5-second deterministic check catches it before merge, no LLM judgment required.
 
 ## Prompt Templates
 
@@ -257,6 +275,7 @@ Done!
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
 - Close a task in the bead while either review has open issues
+- **Implementer created `<basename>_v2` / `_new` / `_modified` / `_copy` / `_old` / `<basename> 2` alongside the original** — re-dispatch to edit the existing file in place and delete the duplicate (or justify why both must coexist)
 
 **If subagent asks questions:**
 - Answer clearly and completely
