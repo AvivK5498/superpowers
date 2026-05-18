@@ -24,6 +24,8 @@ Follow these items in order (track them in the bead if useful):
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
 3. **Conduct the grill-me interview** — run the user's grill-me process (decision-tree interview via AskUserQuestion, one question at a time, each with a recommended answer, resolving dependencies one at a time), recording the decision tree into the bead's `design` field as it goes
+   - **Ambiguity sweep (MANDATORY after every answer batch):** scan the user's most recent answer text for these vague phrases (case-insensitive substring match): `"mix of"`, `"somewhere between"`, `"not sure"`, `"depends"`, `"maybe"`, `"probably"`, `"hybrid"`, `"standard practice"`, `"the usual"`, `"kind of"`. If any match, do NOT advance to the next checklist item. Ask ONE follow-up grill question that quotes the vague phrase and presses for a concrete commitment (e.g., user said "maybe a dropdown" → "You said *maybe* a dropdown. Dropdown or not — which?"). Re-sweep the new answer. Loop until the latest batch is clean.
+   - Vague answers are the single highest source of "the agent built the wrong thing." "Maybe a dropdown" is not a decision — proceeding on it produces rework. One follow-up costs seconds; building the wrong feature costs an hour.
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
 6. **Record the design in the bead** — decision tree and the *why* behind each choice into the bead's `design` field; scope into `description`
@@ -39,6 +41,7 @@ digraph brainstorming {
     "Visual questions ahead?" [shape=diamond];
     "Offer Visual Companion\n(own message, no other content)" [shape=box];
     "Conduct grill-me interview" [shape=box];
+    "Ambiguity sweep:\nvague phrases detected?" [shape=diamond];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
@@ -51,7 +54,9 @@ digraph brainstorming {
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
     "Visual questions ahead?" -> "Conduct grill-me interview" [label="no"];
     "Offer Visual Companion\n(own message, no other content)" -> "Conduct grill-me interview";
-    "Conduct grill-me interview" -> "Propose 2-3 approaches";
+    "Conduct grill-me interview" -> "Ambiguity sweep:\nvague phrases detected?";
+    "Ambiguity sweep:\nvague phrases detected?" -> "Conduct grill-me interview" [label="yes, ask follow-up"];
+    "Ambiguity sweep:\nvague phrases detected?" -> "Propose 2-3 approaches" [label="no, clean"];
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
@@ -137,6 +142,7 @@ Wait for the user's response. If they request changes, make them in the bead and
 ## Key Principles
 
 - **Grill, don't guess** - Refine the idea through the grill-me interview, not ad-hoc questioning
+- **Ambiguity sweep is mandatory** - After every grill batch, scan the user's answer for vague phrases ("maybe", "probably", "mix of", "depends", etc.). On any match, ask one follow-up before advancing. Vague answers cause the wrong feature to get built.
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design, get approval before moving on
