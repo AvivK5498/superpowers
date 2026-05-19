@@ -66,6 +66,8 @@ Before investigating what the code *actually* does, learn what it was *intended*
 
 **Then proceed to Phase 1.** If the work isn't tracked in beads, skip straight to Phase 1.
 
+**Investigation order — ask your human partner only after exhausting other sources.** The order of where to look for information when a bug is reported: (1) the bead, (2) `git log` / `git diff` / `git bisect`, (3) the code itself, (4) only THEN ask your human partner for context. Your human partner's time is the most expensive resource — don't spend it on questions the audit trail or git history already answer.
+
 ### Phase 1: Root Cause Investigation
 
 **BEFORE attempting ANY fix:**

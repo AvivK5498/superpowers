@@ -29,9 +29,10 @@ Follow these items in order (track them in the bead if useful):
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
 6. **Record the design in the bead** — decision tree and the *why* behind each choice into the bead's `design` field; scope into `description`
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **Confirm before planning** — ask the user "design recorded in bead `<id>` — anything to change before planning?"
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+7. **Define "done" in the bead** — before exiting the interview, name the concrete verification target: which test cases (inputs + expected outputs), which behavior changes, what output is produced. This becomes the target for `superpowers:test-driven-development` and `superpowers:verification-before-completion`. "The build passes" is not a verification target — *what the feature does* is.
+8. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+9. **Confirm before planning** — ask the user "design recorded in bead `<id>` — anything to change before planning?"
+10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
